@@ -1,7 +1,5 @@
 module Snake.Text.Parser.AST where
 
--- open import Size using (Size; Size<_; ∞)
--- open import Text.Parser.Position    using (Position)
 
 open import Data.Bool.Base     as Bool using (Bool; not; T)
 open import Data.Nat.Base       as Nat using (ℕ)
@@ -12,10 +10,12 @@ open import Data.Char          as Char using (Char)
 open import Data.String      as String using (String) renaming (_++_ to _<>_)
 open import Data.Unit
 
+open import Text.Parser.Position using (Position)
 open import Text.Parser.Combinators
 open import Text.Parser.Combinators.Char as Ch
 
 open import Function
+open import Size using (∞)
 open import Relation.Unary
 open import Category.Monad
 
@@ -26,7 +26,7 @@ open import Relation.Binary.PropositionalEquality.Decidable using (decide-char)
 
 --------------------------------------------------------------------------------
 
--- open import Snake.Data.AST.Raw Position as AST using (Litl; Patn; Expr; Decl)
+open import Snake.Data.AST.Raw Position as AST using (Litl; Patn; Expr; Decl)
 open import Snake.Text.Parser.Base
 -- open RawMonadPlus monadPlus
 
@@ -57,6 +57,7 @@ lexeme ann p = iterate (annot ann p) $ box $
 
 isKeyword : (s : String) → Maybe (T (not $ null $ String.toList s))
 isKeyword "fun" = just _
+isKeyword "_"   = just _
 isKeyword _     = nothing
 
 IsKeyword : String → Set
@@ -76,3 +77,12 @@ ident = lexeme "non-keyword identifier" $
 
 ----------------------------------------
 -- AST
+
+patn : ∀[ Parser (Patn ∞) ]
+patn = withPos λ pos →
+  AST.wildcard pos <$  kw "_"      <|>
+  AST.ident pos    <$> ident
+
+expr : ∀[ Parser (Expr ∞) ]
+expr = annot "expression" $ withPos λ pos →
+  AST.ident pos    <$> ident

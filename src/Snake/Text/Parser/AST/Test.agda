@@ -11,11 +11,12 @@ open import Relation.Unary
 open import Relation.Binary.PropositionalEquality using (_≡_; refl)
 open import Data.Nat.Properties        using (≤-refl)
 
-open import Text.Parser.Position       using (start)
+open import Text.Parser.Position       using (Position; start)
 open import Text.Parser.Types          using (Success; _^_,_; runParser)
 open import Text.Parser.Monad
 
 open import Snake.Text.Parser.Base
+open import Snake.Data.AST.Raw Position
 import Snake.Text.Parser.AST as P
 -- import Data.Snake.AST as AST
 
@@ -44,6 +45,16 @@ module KWs-Idents where
   t2 : [ P.kw "fun" ] "fun"    => tt
   t3 : [ P.kw "fun" ] "fune"   =error> expected _ "keyword `fun'"
   t4 : [ P.ident ]    "fun"    =error> expected _ "non-keyword identifier"
+  t1 = refl
+  t2 = refl
+  t3 = refl
+  t4 = refl
+
+module Pats-Exprs where
+  t1 : [ P.patn ] "x" => ident _ "x"
+  t2 : [ P.patn ] "_" => wildcard _
+  t3 : [ P.expr ] "x" => ident _ "x"
+  t4 : [ P.expr ] "_" =error> _
   t1 = refl
   t2 = refl
   t3 = refl

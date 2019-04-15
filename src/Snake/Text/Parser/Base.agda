@@ -1,5 +1,6 @@
 module Snake.Text.Parser.Base where
 
+open import Function
 open import Data.Product         using (_×_; _,_)
 open import Data.Nat.Base        using (ℕ)
 open import Data.List            using (List; []; _∷_)
@@ -34,3 +35,7 @@ instance
 
 annot : ∀ {A} → String → ∀[ Parser A ⇒ Parser A ]
 runParser (annot ann p) n≤m s = Monad.withAnnotation ann (runParser p n≤m s)
+
+withPos : ∀ {A} → ∀[ (const Position ⇒ Parser A) ⇒ Parser A ]
+runParser (withPos p) n≤m s (pos , ann) =
+  runParser (p pos) n≤m s (pos , ann)
