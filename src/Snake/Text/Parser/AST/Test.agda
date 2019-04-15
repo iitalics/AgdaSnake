@@ -2,7 +2,8 @@ module Snake.Text.Parser.AST.Test where
 
 open import Function
 open import Data.Product               using (_×_; _,_; proj₁)
-open import Data.List.Base             using (List; [])
+open import Data.List.Base             using (List; []; _∷_)
+open import Data.List.NonEmpty         using (List⁺; _∷_)
 open import Data.Vec            as Vec using (Vec)
 open import Data.String.Base as String using (String)
 open import Data.Unit
@@ -55,7 +56,13 @@ module Pats-Exprs where
   t2 : [ P.patn ] "_" => wildcard _
   t3 : [ P.expr ] "x" => ident _ "x"
   t4 : [ P.expr ] "_" =error> _
+  t5 : [ P.expr ] "f x y" => app (ident _ "f") (ident _ "x" ∷ ident _ "y" ∷ [])
+  t6 : [ P.expr ] "(x)" => ident _ "x"
+  t7 : [ P.expr ] "f (x ( y ))" => app (ident _ "f") (app (ident _ "x") (ident _ "y" ∷ []) ∷ [])
   t1 = refl
   t2 = refl
   t3 = refl
   t4 = refl
+  t5 = refl
+  t6 = refl
+  t7 = refl

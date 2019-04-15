@@ -12,12 +12,13 @@ open import Data.Unit
 
 open import Text.Parser.Position using (Position)
 open import Text.Parser.Combinators
-open import Text.Parser.Combinators.Char as Ch
+import Text.Parser.Combinators.Char as Ch
 
 open import Function
-open import Size using (∞)
+open import Size                 using (∞)
 open import Relation.Unary
 open import Category.Monad
+open import Induction.Nat.Strong using (□_; fix)
 
 -- instances
 open import Data.List.Sized.Interface                       using (vec)
@@ -46,11 +47,14 @@ whitespace : ∀[ Parser _ ]
 whitespace = tt <$ list⁺ (anyOf wsChars)
 
 comment : ∀[ Parser ⊤ ]
-comment = iterate (tt <$ char ';') $ box $ _ <$ anyCharBut '\n'
+comment = iterate (tt <$ Ch.char ';') $ box $ _ <$ Ch.anyCharBut '\n'
 
 lexeme : String → ∀ {A} → ∀[ Parser A ⇒ Parser A ]
 lexeme ann p = iterate (annot ann p) $ box $
                id <$ (whitespace <|> comment)
+
+char : Char → ∀[ Parser Char ]
+char c = lexeme (String.fromList ('`' ∷ c ∷ '\'' ∷ [])) (Ch.char c)
 
 ----------------------------------------
 -- Identifiers and keywords
@@ -84,5 +88,13 @@ patn = withPos λ pos →
   AST.ident pos    <$> ident
 
 expr : ∀[ Parser (Expr ∞) ]
-expr = annot "expression" $ withPos λ pos →
-  AST.ident pos    <$> ident
+expr = fix _ λ expr →
+  let
+    term =
+      between (char '(') (box (char ')')) expr <|>
+      withPos λ pos → (AST.ident pos <$> ident)
+
+    app =
+      (λ es f → AST.app f es) <$> list⁺ term
+  in
+    iterate term (box app)
