@@ -98,3 +98,12 @@ expr = fix _ λ expr →
       (λ es f → AST.app f es) <$> list⁺ term
   in
     iterate term (box app)
+
+decl : ∀[ Parser (Decl ∞) ]
+decl = withPos λ pos → ident >>= λ name → box $
+  let
+    body = char '=' &> box expr
+    pats = NE.toList <$> list⁺ patn
+  in
+    (AST.fun pos name []       <$> body)       <|>
+    (AST.fun pos name <$> pats <*> box body)

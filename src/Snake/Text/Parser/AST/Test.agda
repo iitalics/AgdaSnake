@@ -66,3 +66,11 @@ module Pats-Exprs where
   t5 = refl
   t6 = refl
   t7 = refl
+
+module Decls where
+  t1 : [ P.decl ] "x = y" => fun _ "x" [] (ident _ "y")
+  t2 : [ P.decl ] "id x = x" => fun _ "id" (ident _ "x" ∷ []) (ident _ "x")
+  t3 : [ P.decl ] "k x _ = x" => fun _ "k" (ident _ "x" ∷ wildcard _ ∷ []) (ident _ "x")
+  t1 = refl
+  t2 = refl
+  t3 = refl
