@@ -34,11 +34,15 @@ open import Snake.Text.Parser.Base
 ----------------------------------------
 -- Character classes
 
-wsChars delChars opChars nonIdChars : List Char
+wsChars delChars opChars : List Char
 wsChars    = String.toList " \t\n"
 delChars   = String.toList ";,|()[]{}"
 opChars    = String.toList "+-*/@$<>="
-nonIdChars = wsChars ++ delChars ++ opChars
+numChars   = String.toList "0123456789"
+
+nonIdChars nonIdHeadChars : List Char
+nonIdChars     = wsChars ++ delChars ++ opChars
+nonIdHeadChars = numChars ++ nonIdChars
 
 ----------------------------------------
 -- Whitespace and comments
@@ -68,7 +72,9 @@ IsKeyword : String → Set
 IsKeyword = T ∘ Maybe.is-just ∘ isKeyword
 
 rawIdent : ∀[ Parser String ]
-rawIdent = String.fromList ∘ NE.toList <$> list⁺ (noneOf nonIdChars)
+rawIdent = String.fromList ∘ NE.toList <$>
+           head+tail (noneOf nonIdHeadChars)
+                     (box (noneOf nonIdChars))
 
 kw : (s : String) {_ : IsKeyword s} → ∀[ Parser ⊤ ]
 kw s {pr} = lexeme ("keyword `" <> s <> "'") $ tt <$
@@ -80,19 +86,45 @@ ident = lexeme "non-keyword identifier" $
         guard (Maybe.is-nothing ∘ isKeyword) rawIdent
 
 ----------------------------------------
+-- Numbers
+
+private
+  index : ∀ {A : Set} → (A → Bool) → List A → ℕ → Maybe ℕ
+  index f []       i = nothing
+  index f (x ∷ xs) i with f x
+  ... | Bool.true  = just i
+  ... | Bool.false = index f xs (Nat.suc i)
+
+  toDig : Char → Maybe ℕ
+  toDig c = index (c Char.==_) (String.toList "0123456789") 0
+
+  digit : ∀[ Parser ℕ ]
+  digit = guardM toDig anyTok
+
+nat : ∀[ Parser ℕ ]
+nat = iterate digit (box $ (λ d n → n * 10 + d) <$> digit)
+  where open Nat
+
+----------------------------------------
 -- AST
+
+litl : ∀[ Parser Litl ]
+litl = lexeme "number" nat
 
 patn : ∀[ Parser (Patn ∞) ]
 patn = withPos λ pos →
   AST.wildcard pos <$  kw "_"      <|>
-  AST.ident pos    <$> ident
+  AST.ident pos    <$> ident       <|>
+  AST.litl pos     <$> litl
 
 expr : ∀[ Parser (Expr ∞) ]
 expr = fix _ λ expr →
   let
     term =
       between (char '(') (box (char ')')) expr <|>
-      withPos λ pos → (AST.ident pos <$> ident)
+      (withPos λ pos →
+        AST.ident pos <$> ident  <|>
+        AST.litl pos  <$> litl)
 
     app =
       (λ es f → AST.app f es) <$> list⁺ term

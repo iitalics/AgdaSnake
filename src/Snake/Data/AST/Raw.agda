@@ -9,17 +9,18 @@ open import Data.List.NonEmpty using (List⁺)
 
 --------------------------------------------------------------------------------
 
-data Litl : Set where
-  num : ℕ → Litl
+Litl = ℕ
 
 data Patn (i : Size) : Set where
   wildcard : (t : T) → Patn i
   ident    : (t : T) (name : String) → Patn i
+  litl     : (t : T) (l : Litl) → Patn i
   tuple    : (t : T) {j : Size< i} (ps : List (Patn j)) → Patn i
 
 data Expr (i : Size) : Set where
   ident : (t : T) (name : String) → Expr i
   app   : (f : Expr i) {j : Size< i} (es : List⁺ (Expr j)) → Expr i
+  litl  : (t : T) (l : Litl) → Expr i
   tuple : (t : T) {j : Size< i} (es : List (Expr j)) → Expr i
 
 data Decl (i : Size) : Set where

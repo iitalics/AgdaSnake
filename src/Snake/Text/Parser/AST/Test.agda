@@ -42,30 +42,46 @@ import Snake.Text.Parser.AST as P
 ----
 
 module KWs-Idents where
-  t1 : [ P.ident  ]   "foo"    => "foo"
+  t1 : [ P.ident  ]   "foo_bar123"    => "foo_bar123"
   t2 : [ P.kw "fun" ] "fun"    => tt
   t3 : [ P.kw "fun" ] "fune"   =error> expected _ "keyword `fun'"
   t4 : [ P.ident ]    "fun"    =error> expected _ "non-keyword identifier"
+  t5 : [ P.ident ]    "1foo"   =error> _
   t1 = refl
   t2 = refl
   t3 = refl
   t4 = refl
+  t5 = refl
 
-module Pats-Exprs where
+module Numbers where
+  t1 : [ P.nat ] "013" => 13
+  t2 : [ P.nat ] "10"  => 10
+  -- t3 : [ P.nat ] "1a"  =error> _ -- TODO
+  t1 = refl
+  t2 = refl
+  -- t3 = refl
+
+module Pats where
   t1 : [ P.patn ] "x" => ident _ "x"
   t2 : [ P.patn ] "_" => wildcard _
-  t3 : [ P.expr ] "x" => ident _ "x"
-  t4 : [ P.expr ] "_" =error> _
-  t5 : [ P.expr ] "f x y" => app (ident _ "f") (ident _ "x" ∷ ident _ "y" ∷ [])
-  t6 : [ P.expr ] "(x)" => ident _ "x"
-  t7 : [ P.expr ] "f (x ( y ))" => app (ident _ "f") (app (ident _ "x") (ident _ "y" ∷ []) ∷ [])
+  t3 : [ P.patn ] "45" => litl _ 45
+  t1 = refl
+  t2 = refl
+  t3 = refl
+
+module Exprs where
+  t1 : [ P.expr ] "_" =error> _
+  t2 : [ P.expr ] "x" => ident _ "x"
+  t3 : [ P.expr ] "4" => litl _ 4
+  t4 : [ P.expr ] "f 2 x" => app (ident _ "f") (litl _ 2 ∷ ident _ "x" ∷ [])
+  t5 : [ P.expr ] "(x)"  => ident _ "x"
+  t6 : [ P.expr ] "f (x ( 3 ))" => app (ident _ "f") (app (ident _ "x") (litl _ 3 ∷ []) ∷ [])
   t1 = refl
   t2 = refl
   t3 = refl
   t4 = refl
   t5 = refl
   t6 = refl
-  t7 = refl
 
 module Decls where
   t1 : [ P.decl ] "x = y" => fun _ "x" [] (ident _ "y")
