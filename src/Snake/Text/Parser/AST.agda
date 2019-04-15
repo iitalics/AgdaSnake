@@ -1,7 +1,7 @@
 module Snake.Text.Parser.AST where
 
 
-open import Data.Bool.Base     as Bool using (Bool; not; T)
+open import Data.Bool.Base     as Bool using (Bool; not; T; true; false)
 open import Data.Nat.Base       as Nat using (ℕ)
 open import Data.List.Base     as List using (List; []; _∷_; _++_; null)
 open import Data.List.NonEmpty   as NE using (List⁺)
@@ -63,13 +63,13 @@ char c = lexeme (String.fromList ('`' ∷ c ∷ '\'' ∷ [])) (Ch.char c)
 ----------------------------------------
 -- Identifiers and keywords
 
-isKeyword : (s : String) → Maybe (T (not $ null $ String.toList s))
-isKeyword "fun" = just _
-isKeyword "_"   = just _
-isKeyword _     = nothing
+isKeyword : (s : String) → Bool
+isKeyword "fun" = true
+isKeyword "_"   = true
+isKeyword _     = false
 
 IsKeyword : String → Set
-IsKeyword = T ∘ Maybe.is-just ∘ isKeyword
+IsKeyword = T ∘ isKeyword
 
 rawIdent : ∀[ Parser String ]
 rawIdent = String.fromList ∘ NE.toList <$>
@@ -77,13 +77,12 @@ rawIdent = String.fromList ∘ NE.toList <$>
                      (box (noneOf nonIdChars))
 
 kw : (s : String) {_ : IsKeyword s} → ∀[ Parser ⊤ ]
-kw s {pr} = lexeme ("keyword `" <> s <> "'") $ tt <$
-            guard (s String.==_) rawIdent
-  where pr′ = Maybe.to-witness-T (isKeyword s) pr
+kw s = lexeme ("keyword `" <> s <> "'") $
+       tt <$ guard (s String.==_) rawIdent
 
 ident : ∀[ Parser String ]
 ident = lexeme "non-keyword identifier" $
-        guard (Maybe.is-nothing ∘ isKeyword) rawIdent
+        guard (not ∘ isKeyword) rawIdent
 
 ----------------------------------------
 -- Numbers
@@ -92,8 +91,8 @@ private
   index : ∀ {A : Set} → (A → Bool) → List A → ℕ → Maybe ℕ
   index f []       i = nothing
   index f (x ∷ xs) i with f x
-  ... | Bool.true  = just i
-  ... | Bool.false = index f xs (Nat.suc i)
+  ... | true  = just i
+  ... | false = index f xs (Nat.suc i)
 
   toDig : Char → Maybe ℕ
   toDig c = index (c Char.==_) (String.toList "0123456789") 0
