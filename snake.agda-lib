@@ -1,0 +1,6 @@
+depend:
+  standard-library
+  agdarsec
+
+include:
+  src
