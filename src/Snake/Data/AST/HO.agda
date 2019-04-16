@@ -4,7 +4,7 @@ module Snake.Data.AST.HO
   (S : SHAPE)
   where
 
-open import Size using (Size; Size<_)
+open import Size using (Size; Size<_; ∞)
 open import Data.String.Base using (String)
 open import Data.Product using (_×_)
 
@@ -20,16 +20,16 @@ data Expr (V : Set) : Set where
   app1 : S app1-e → (f : Expr V) (e : Expr V) → Expr V
   litl : S litl-e → Expr V
 
-data Fun (V : Set) : Set where
-  body : (e : Expr V) → Fun V
-  arg  : S arg → (p : Patn V (Fun V)) → Fun V
+data Fun (V : Set) (i : Size) : Set where
+  body : (e : Expr V) → Fun V i
+  arg  : S arg → {j : Size< i} (p : Patn V (Fun V j)) → Fun V i
 
 data Decl (V : Set) (R : Set) : Set where
-  fun : S fun → (V → Fun V × R) → Decl V R
+  fun : S fun → (V → Fun V ∞ × R) → Decl V R
 
-data Prog (V : Set) : Set where
-  empty : Prog V
-  more  : Decl V (Prog V) → Prog V
+data Prog (V : Set) (i : Size) : Set where
+  empty : Prog V i
+  more  : {j : Size< i} → Decl V (Prog V j) → Prog V i
 
 ClosedOverProgram : Set₁
-ClosedOverProgram = ∀ V → Prog V
+ClosedOverProgram = ∀ V → Prog V ∞

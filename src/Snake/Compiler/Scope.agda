@@ -1,5 +1,6 @@
 module Snake.Compiler.Scope where
 
+open import Size              using (∞)
 open import Function
 open import Relation.Nullary  using (yes; no)
 open import Relation.Unary   hiding (_∈_; Decidable)
@@ -97,8 +98,8 @@ module WF where
 
   Expr = WF HO.Expr
   Patn = λ (T : Set → Set) → WF λ V → HO.Patn V (T V)
-  Fun  = WF HO.Fun
-  Prog = WF HO.Prog
+  Fun  = WF (flip HO.Fun ∞)
+  Prog = WF (flip HO.Prog ∞)
 
   app : ∀ {G} → Expr G → List (Expr G) → Expr G
   app = List.foldl (λ e₁ e₂ V g → HO.app1 _ (e₁ V g) (e₂ V g))
