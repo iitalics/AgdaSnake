@@ -1,4 +1,9 @@
-module Snake.Compiler.Desugar where
+open import Snake.Compiler.Desugar.Base
+
+module Snake.Compiler.Desugar
+  {PrevShape : _}
+  (desugarable : DesugarableShape PrevShape)
+  where
 
 open import Function
 open import Relation.Unary
@@ -9,31 +14,23 @@ open import Data.Product       as Prod using (_×_; _,_)
 open import Data.String.Base           using (String)
 open import Text.Parser.Position       using (Position)
 
-open import Snake.Data.AST.Base
 open import Snake.Data.AST.HO.Base
+open import Snake.Data.AST.Base
+open DesugarableShape desugarable
 
 --------------------------------------------------------------------------------
 
-open import Snake.Compiler.Scope using ()
-  renaming (Shape to PrevShape)
-
 Shape : SHAPE
 Shape wild-p = ⊥
-Shape litl-p = Litl × Position
-Shape name-p = String × Position
-Shape litl-e = Litl × Position
-Shape var-e  = Position
-Shape app1-e = ⊤
-Shape fun    = String × Position
-Shape arg    = ⊤
+Shape l      = PrevShape l
 
 import Snake.Data.AST.HO PrevShape as I
 import Snake.Data.AST.HO Shape as O
 
 dePatn : ∀ {V R₁ R₂} → (R₁ → R₂) → I.Patn V R₁ → O.Patn V R₂
-dePatn f (I.wild pos x) = O.name ("_" , pos) λ _ → f x
-dePatn f (I.name s g)   = O.name s (f ∘ g)
-dePatn f (I.litl s x)   = O.litl s (f x)
+dePatn f (I.wild s x) = O.name (wild⇒name-p s) λ _ → f x
+dePatn f (I.name s g) = O.name s (f ∘ g)
+dePatn f (I.litl s x) = O.litl s (f x)
 
 deExpr : ∀ {V} → I.Expr V → O.Expr V
 deExpr (I.var s v)    = O.var s v
