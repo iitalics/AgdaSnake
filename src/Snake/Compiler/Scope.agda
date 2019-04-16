@@ -93,9 +93,6 @@ module WF where
   app : ∀ {G} → Expr G → List (Expr G) → Expr G
   app = List.foldl (λ e₁ e₂ V g → HO.app1 (e₁ V g) (e₂ V g))
 
-  body : ∀ {G} → Expr G → Fun G
-  body e V g = HO.body (e V g)
-
 ----------------------------------------
 
 open M public using (M)
