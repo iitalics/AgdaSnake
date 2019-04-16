@@ -40,7 +40,8 @@ module Exprs where
   t2 : wf (Raw.ident p "x") =error> unbound-ident p "x"
   -- 1 2 3
   t3 : wf (Raw.app (Raw.litl p 1) (Raw.litl p 2 ∷ Raw.litl p 3 ∷ []))
-       => HO.app1 _ (HO.app1 _ (HO.litl (1 , _)) (HO.litl (2 , _))) (HO.litl (3 , _))
+       => HO.app _ (HO.litl (1 , _))
+                   (HO.litl (2 , _) ∷ HO.litl (3 , _) ∷ [])
   t1 = refl
   t2 = refl
   t3 = refl
@@ -85,7 +86,7 @@ module Funs where
        => (HO.more $ HO.fun ("ap" , _) λ ap →
            (HO.arg _ $ HO.name ("x" , _) λ x →
             HO.arg _ $ HO.name ("f" , _) λ f →
-            HO.body $ HO.app1 _ (HO.var _ f) (HO.var _ x))
+            HO.body $ HO.app _ (HO.var _ f) (HO.var _ x ∷ []))
           , HO.empty)
   t1 = refl
   t2 = refl

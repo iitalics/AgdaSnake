@@ -8,6 +8,7 @@ open import Relation.Binary   using (Decidable)
 open import Category.Monad
 
 open import Data.Unit                  using (⊤)
+open import Data.Empty                 using (⊥)
 open import Data.Product               using (_×_; _,_)
 open import Data.Sum.Base       as Sum using (_⊎_)
 open import Data.String.Base           using (String)
@@ -28,7 +29,8 @@ Shape litl-p = Litl × Position
 Shape name-p = String × Position
 Shape litl-e = Litl × Position
 Shape var-e  = Position
-Shape app1-e = ⊤
+Shape app1-e = ⊥
+Shape app-e  = ⊤
 Shape fun    = String × Position
 Shape arg    = ⊤
 
@@ -101,8 +103,8 @@ module WF where
   Fun  = WF (flip HO.Fun ∞)
   Prog = WF (flip HO.Prog ∞)
 
-  app : ∀ {G} → Expr G → List (Expr G) → Expr G
-  app = List.foldl (λ e₁ e₂ V g → HO.app1 _ (e₁ V g) (e₂ V g))
+  app : ∀ {G} → Expr G → List⁺ (Expr G) → Expr G
+  app f es V g = HO.app _ (f V g) (NE.map (λ e → e V g) es)
 
 ----------------------------------------
 
@@ -130,7 +132,7 @@ wfExpr G (Raw.litl pos l)
 wfExpr G (Raw.app f es)
   = do f′  ← wfExpr G f
        es′ ← M.traverse⁺ (wfExpr G) es
-       return (WF.app f′ (NE.toList es′))
+       return (WF.app f′ es′)
 wfExpr G (Raw.ident pos x)
   with x Cx.∈? G
 ...  | yes mem = return λ V g → HO.var pos (Cx.get mem g)
