@@ -1,8 +1,7 @@
 module Snake.Compiler.Scope where
 
 open import Function
-open import Size              using (Size<_; ∞)
-open import Relation.Nullary  using (Dec; yes; no)
+open import Relation.Nullary  using (yes; no)
 open import Relation.Unary   hiding (_∈_; Decidable)
 open import Relation.Binary   using (Decidable)
 open import Category.Monad
@@ -27,32 +26,18 @@ data Error : Set where
 
 -- Fallible monad
 
-module M where
-  import Data.Sum.Categorical.Left
-
-  open import Data.Sum.Base public
-    using () renaming (inj₁ to fail)
-
-  M : Set₁ → Set₁
+module M {a} where
+  M : Set a → Set a
   M = Error ⊎_
 
-  monad : RawMonad M
-  monad = Data.Sum.Categorical.Left.monad Error _
+  fail : ∀ {A} → Error → M A
+  fail = Sum.inj₁
 
-  open RawMonad monad public renaming (_⊛_ to _<*>_)
+  open import Data.Sum.Categorical.Left Error a
+    public using (monad; applicative)
 
-  module _ {a} {A : Set a} {B} where
-
-    foldM : (B → A → M B) → B → List A → M B
-    foldM f n []       = return n
-    foldM f n (x ∷ xs) = f n x >>= λ m → foldM f m xs
-
-    traverse : (A → M B) → List A → M (List B)
-    traverse f []       = pure []
-    traverse f (x ∷ xs) = (| f x ∷ traverse f xs |)
-
-    traverse⁺ : (A → M B) → List⁺ A → M (List⁺ B)
-    traverse⁺ f (x ∷ xs) = (| f x ∷ traverse f xs |)
+  open RawMonad monad public
+  open import Extra.Category.Applicative.Combinators applicative public
 
 -- Contexts
 --   "G" = context specification
@@ -116,7 +101,7 @@ module WF where
 open M public using (M)
 open WF public using (WF)
 open Cx public using (Context)
-open M using (return; _>>=_; pure; _<*>_; _<$>_)
+open M using (return; _>>=_)
 
 wfPatn : ∀ G (R : Set → Set) → Π[ M ∘ WF R ] →
          ∀ {i} → Raw.Patn i → M (WF.Patn R G)
