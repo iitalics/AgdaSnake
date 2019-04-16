@@ -11,7 +11,7 @@ open import Text.Parser.Position as Pos using (Position)
 
 open import Snake.Data.AST.Base
 open import Snake.Compiler.Scope
-import Snake.Data.AST.HO as HO
+import Snake.Data.AST.HO Shape as HO
 import Snake.Data.AST.Raw Position as Raw
 
 --------------------------------------------------------------------------------
@@ -35,23 +35,23 @@ module Exprs where
   wf = wfExpr ∅
 
   -- 5
-  t1 : wf (Raw.litl p 5) => HO.litl 5
+  t1 : wf (Raw.litl p 5) => HO.litl (5 , _)
   -- x
   t2 : wf (Raw.ident p "x") =error> unbound-ident p "x"
   -- 1 2 3
   t3 : wf (Raw.app (Raw.litl p 1) (Raw.litl p 2 ∷ Raw.litl p 3 ∷ []))
-       => HO.app1 (HO.app1 (HO.litl 1) (HO.litl 2)) (HO.litl 3)
+       => HO.app1 _ (HO.app1 _ (HO.litl (1 , _)) (HO.litl (2 , _))) (HO.litl (3 , _))
   t1 = refl
   t2 = refl
   t3 = refl
 
 module Patns where
-  wf = λ p e → wfPatn ∅ HO.Expr (λ G → wfExpr G e) p
+  wf = λ p e → wfPatn ∅ (λ G → wfExpr G e) p
 
   -- _ -> 5
-  t1 : wf (Raw.wildcard p) (Raw.litl p 5) => HO.wild (HO.litl 5)
+  t1 : wf (Raw.wildcard p) (Raw.litl p 5) => HO.wild _ (HO.litl (5 , _))
   -- x -> x
-  t2 : wf (Raw.ident p "x") (Raw.ident p "x") => HO.name "x" λ x → HO.var x
+  t2 : wf (Raw.ident p "x") (Raw.ident p "x") => HO.name ("x" , _) λ x → HO.var _ x
   -- y -> x
   t3 : wf (Raw.ident p "y") (Raw.ident p "x") =error> unbound-ident p "x"
   t1 = refl
@@ -63,29 +63,29 @@ module Funs where
 
   -- id x = x
   t1 : wf (Raw.fun p "id" (Raw.ident p "x" ∷ []) (Raw.ident p "x"))
-       => (HO.more $ HO.fun "id" λ id →
-           (HO.arg $ HO.name "x" λ x →
-            HO.body $ HO.var x)
+       => (HO.more $ HO.fun ("id" , _) λ id →
+           (HO.arg _ $ HO.name ("x" , _) λ x →
+            HO.body $ HO.var _ x)
          , HO.empty)
   -- loop = loop
   t2 : wf (Raw.fun p "loop" [] (Raw.ident p "loop"))
-       => (HO.more $ HO.fun "loop" λ loop →
-           (HO.body $ HO.var loop)
+       => (HO.more $ HO.fun ("loop" , _) λ loop →
+           (HO.body $ HO.var _ loop)
          , HO.empty)
   -- k x _ = x
   t3 : wf (Raw.fun p "k" (Raw.ident p "x" ∷ Raw.wildcard p ∷ []) (Raw.ident p "x"))
-       => (HO.more $ HO.fun "k" λ k →
-           (HO.arg $ HO.name "x" λ x →
-            HO.arg $ HO.wild $
-            HO.body $ HO.var x)
+       => (HO.more $ HO.fun ("k" , _) λ k →
+           (HO.arg _ $ HO.name ("x" , _) λ x →
+            HO.arg _ $ HO.wild _ $
+            HO.body $ HO.var _ x)
           , HO.empty)
   -- ap x f = f x
   t4 : wf (Raw.fun p "ap" (Raw.ident p "x" ∷ Raw.ident p "f" ∷ [])
                           (Raw.app (Raw.ident p "f") (Raw.ident p "x" ∷ [])))
-       => (HO.more $ HO.fun "ap" λ ap →
-           (HO.arg $ HO.name "x" λ x →
-            HO.arg $ HO.name "f" λ f →
-            HO.body $ HO.app1 (HO.var f) (HO.var x))
+       => (HO.more $ HO.fun ("ap" , _) λ ap →
+           (HO.arg _ $ HO.name ("x" , _) λ x →
+            HO.arg _ $ HO.name ("f" , _) λ f →
+            HO.body $ HO.app1 _ (HO.var _ f) (HO.var _ x))
           , HO.empty)
   t1 = refl
   t2 = refl
@@ -98,9 +98,9 @@ module Progs where
   -- n = 1; m = n
   t1 : wf (Raw.fun p "n" [] (Raw.litl p 1) ∷
            Raw.fun p "m" [] (Raw.ident p "n") ∷ [])
-       => (HO.more $ HO.fun "n" λ n →
-           (HO.body $ HO.litl 1)
-        , (HO.more $ HO.fun "m" λ m →
-           (HO.body $ HO.var n)
+       => (HO.more $ HO.fun ("n" , _) λ n →
+           (HO.body $ HO.litl (1 , _))
+        , (HO.more $ HO.fun ("m" , _) λ m →
+           (HO.body $ HO.var _ n)
         , HO.empty))
   t1 = refl

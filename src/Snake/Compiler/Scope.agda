@@ -6,6 +6,7 @@ open import Relation.Unary   hiding (_∈_; Decidable)
 open import Relation.Binary   using (Decidable)
 open import Category.Monad
 
+open import Data.Unit                  using (⊤)
 open import Data.Product               using (_×_; _,_)
 open import Data.Sum.Base       as Sum using (_⊎_)
 open import Data.String.Base           using (String)
@@ -14,33 +15,42 @@ open import Data.List.NonEmpty   as NE using (List⁺; _∷_)
 open import Text.Parser.Position       using (Position)
 
 open import Snake.Data.AST.Base
-import Snake.Data.AST.HO as HO
-import Snake.Data.AST.Raw Position as Raw
+open import Snake.Data.AST.HO.Base
 
 ------------------------------------------------------------------------
 
--- Errors
+-- AST configuration
+
+Shape : SHAPE
+Shape wild-p = Position
+Shape litl-p = Litl × Position
+Shape name-p = String × Position
+Shape litl-e = Litl × Position
+Shape var-e  = Position
+Shape app1-e = ⊤
+Shape fun    = String × Position
+Shape arg    = ⊤
+
+import Snake.Data.AST.HO Shape as HO
+import Snake.Data.AST.Raw Position as Raw
+
+-- Failable monad
 
 data Error : Set where
   unbound-ident : Position → String → Error
 
--- Fallible monad
-
 module M {a} where
-  M : Set a → Set a
-  M = Error ⊎_
+  open import Data.Sum.Categorical.Left Error a public
+    using (monad; applicative) renaming (Sumₗ to M)
 
   fail : ∀ {A} → Error → M A
   fail = Sum.inj₁
-
-  open import Data.Sum.Categorical.Left Error a
-    public using (monad; applicative)
 
   open RawMonad monad public
   open import Extra.Category.Applicative.Combinators applicative public
 
 -- Contexts
---   "G" = context specification
+--   "G" = environment specification
 --   "g" = environment that matches a specification
 
 module Cx where
@@ -91,7 +101,7 @@ module WF where
   Prog = WF HO.Prog
 
   app : ∀ {G} → Expr G → List (Expr G) → Expr G
-  app = List.foldl (λ e₁ e₂ V g → HO.app1 (e₁ V g) (e₂ V g))
+  app = List.foldl (λ e₁ e₂ V g → HO.app1 _ (e₁ V g) (e₂ V g))
 
 ----------------------------------------
 
@@ -100,29 +110,29 @@ open WF public using (WF)
 open Cx public using (Context)
 open M using (return; _>>=_)
 
-wfPatn : ∀ G (R : Set → Set) → Π[ M ∘ WF R ] →
-         ∀ {i} → Raw.Patn i → M (WF.Patn R G)
-wfPatn G R wfR (Raw.wildcard _)
-  = do body ← wfR G
-       return λ V g → HO.wild (body V g)
-wfPatn G R wfR (Raw.litl _ l)
-  = do body ← wfR G
-       return λ V g → HO.litl l (body V g)
-wfPatn G R wfR (Raw.ident _ name)
-  = do body ← wfR (Cx.insert name G)
-       return λ V g → HO.name name λ v →
-                      body V (Cx.extend g name v)
+wfPatn : ∀ G {B : Set → Set} → Π[ M ∘ WF B ] →
+         ∀ {i} → Raw.Patn i → M (WF.Patn B G)
+wfPatn G wfBody (Raw.wildcard pos)
+  = do body ← wfBody G
+       return λ V g → HO.wild pos (body V g)
+wfPatn G wfBody (Raw.litl pos l)
+  = do body ← wfBody G
+       return λ V g → HO.litl (l , pos) (body V g)
+wfPatn G wfBody (Raw.ident pos name)
+  = do body ← wfBody (Cx.insert name G)
+       return λ V g → HO.name (name , pos) λ x →
+                      body V (Cx.extend g name x)
 
 wfExpr : ∀ G {i} → Raw.Expr i → M (WF.Expr G)
-wfExpr G (Raw.litl _ l)
-  = return λ _ _ → HO.litl l
+wfExpr G (Raw.litl pos l)
+  = return λ _ _ → HO.litl (l , pos)
 wfExpr G (Raw.app f es)
   = do f′  ← wfExpr G f
        es′ ← M.traverse⁺ (wfExpr G) es
        return (WF.app f′ (NE.toList es′))
 wfExpr G (Raw.ident pos x)
   with x Cx.∈? G
-...  | yes mem = return λ V g → HO.var (Cx.get mem g)
+...  | yes mem = return λ V g → HO.var pos (Cx.get mem g)
 ...  | no _    = M.fail (unbound-ident pos x)
 
 wfFun : ∀ G {i} → List (Raw.Patn i) → Raw.Expr i → M (WF.Fun G)
@@ -130,16 +140,16 @@ wfFun G [] e
   = do e′ ← wfExpr G e
        return λ V g → HO.body (e′ V g)
 wfFun G (p ∷ ps) e
-  = do p′ ← wfPatn G _ (λ G → wfFun G ps e) p
-       return λ V g → HO.arg (p′ V g)
+  = do p′ ← wfPatn G (λ G → wfFun G ps e) p
+       return λ V g → HO.arg _ (p′ V g)
 
 wfProg : ∀ G {i} → Raw.Prog i → M (WF.Prog G)
 wfProg G [] = return λ V g → HO.empty
-wfProg G (Raw.fun _ name params body ∷ ds)
+wfProg G (Raw.fun pos name params body ∷ ds)
   = do let G+f = Cx.insert name G
        f′ ← wfFun G+f params body
        p′ ← wfProg G+f ds
-       return λ V g → HO.more $ HO.fun name λ v →
+       return λ V g → HO.more $ HO.fun (name , pos) λ v →
                       let g+f = Cx.extend g name v in
                       f′ V g+f , p′ V g+f
 
