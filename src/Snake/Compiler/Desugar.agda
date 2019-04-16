@@ -33,31 +33,33 @@ Shape l      = PrevShape l
 import Snake.Data.AST.HO PrevShape as I
 import Snake.Data.AST.HO Shape as O
 
-dePatn : ∀ {V R₁ R₂} → (R₁ → R₂) → I.Patn V R₁ → O.Patn V R₂
-dePatn f (I.wild s x) = O.name (wild⇒name-p s) λ _ → f x
-dePatn f (I.name s g) = O.name s (f ∘ g)
-dePatn f (I.litl s x) = O.litl s (f x)
+module _ {V} where
 
-mutual
-  deExpr : ∀ {V} → I.Expr V → O.Expr V
-  deExpr (I.var s v)    = O.var s v
-  deExpr (I.litl s)     = O.litl s
-  deExpr (I.app1 s f e) = O.app1 (app1⇒app-e s) (deExpr f) (deExpr e)
-  deExpr (I.app s f (e ∷ es)) = deApp s es (O.app1 s (deExpr f) (deExpr e))
+  dePatn : ∀ {R₁ R₂} → (R₁ → R₂) → I.Patn V R₁ → O.Patn V R₂
+  dePatn f (I.wild s x) = O.name (wild⇒name-p s) λ _ → f x
+  dePatn f (I.name s g) = O.name s (f ∘ g)
+  dePatn f (I.litl s x) = O.litl s (f x)
 
-  deApp : ∀ {V} → AppShape → List (I.Expr V) → O.Expr V → O.Expr V
-  deApp s []       f = f
-  deApp s (e ∷ es) f = deApp s es (O.app1 s f (deExpr e))
+  mutual
+    deExpr : I.Expr V → O.Expr V
+    deExpr (I.var s v)    = O.var s v
+    deExpr (I.litl s)     = O.litl s
+    deExpr (I.app1 s f e) = O.app1 (app1⇒app-e s) (deExpr f) (deExpr e)
+    deExpr (I.app s f (e ∷ es)) = deApp s es (O.app1 s (deExpr f) (deExpr e))
 
-deFun : ∀ {V} → ∀[ I.Fun V ⇒ O.Fun V ]
-deFun (I.body e)  = O.body (deExpr e)
-deFun (I.arg s p) = O.arg s (dePatn deFun p)
+    deApp : AppShape → List (I.Expr V) → O.Expr V → O.Expr V
+    deApp s []       f = f
+    deApp s (e ∷ es) f = deApp s es (O.app1 s f (deExpr e))
 
-deProg : ∀ {V} → ∀[ I.Prog V ⇒ O.Prog V ]
-deProg I.empty = O.empty
-deProg (I.more (I.fun s body))
-  = O.more $ O.fun s λ v →
-    Prod.map deFun deProg (body v)
+  deFun : ∀[ I.Fun V ⇒ O.Fun V ]
+  deFun (I.body e)  = O.body (deExpr e)
+  deFun (I.arg s p) = O.arg s (dePatn deFun p)
+
+  deProg : ∀[ I.Prog V ⇒ O.Prog V ]
+  deProg I.empty = O.empty
+  deProg (I.more (I.fun s body))
+    = O.more $ O.fun s λ v →
+      Prod.map deFun deProg (body v)
 
 desugar : I.ClosedOverProgram → O.ClosedOverProgram
 desugar prog V = deProg (prog V)
